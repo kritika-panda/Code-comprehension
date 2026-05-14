@@ -1,0 +1,68 @@
+public static List<String> topKFrequent(String[] words, int k) {
+    Map<String, Integer> freq = new HashMap<>();
+    for (String word : words) {
+        freq.put(word, freq.getOrDefault(word, 0) + 1);
+    }
+
+    PriorityQueue<String> heap = new PriorityQueue<>(
+        (a, b) -> {
+            if (freq.get(a).equals(freq.get(b))) {
+                return b.compareTo(a);
+            }
+            return freq.get(a) - freq.get(b);
+        }
+    );
+
+    for (String word : freq.keySet()) {
+        heap.offer(word);
+        if (heap.size() > k) {
+            heap.poll();
+        }
+    }
+
+    List<String> result = new ArrayList<>();
+    while (!heap.isEmpty()) {
+        result.add(heap.poll());
+    }
+    Collections.reverse(result);
+    return result;
+}
+
+
+
+1) High‑level purpose: “At a high level, this function returns the k most frequent words, sorted by descending frequency 
+and lexicographical order for ties.”
+
+2) Inputs & outputs: “The input is an array of strings and an integer k.
+The output is a list of k words ordered by descending frequency, and lexicographically for ties.”
+
+3) Comparator logic (most important part): “This comparator creates a min‑heap where words with lower frequency have higher 
+priority.If frequencies are equal, the lexicographically larger word is prioritized so that it gets removed first when the 
+heap exceeds size k.”
+
+4) Why reverse at the end?: “Since elements are extracted from the min‑heap in ascending priority order, reversing the list 
+ensures the final result is in descending frequency order.”
+
+5) Time & space complexity:
+Time complexity:
+Building frequency map: O(n)
+Heap operations: O(n log k)
+Total: O(n log k)
+Space complexity: Frequency map + heap: O(n + k)
+
+6)  Edge case / pitfall:
+Examples you could say:
+k > number of unique words
+k == 0
+Empty input array
+Case sensitivity assumptions
+✅ Model answer:
+“If k is larger than the number of unique words, the function returns all unique words.”
+
+
+“At a high level, this function returns the k most frequent words, ordered by descending frequency and lexicographical order for ties.
+It first builds a frequency map, then uses a min‑heap of size k to keep track of the top k elements.
+The comparator ensures lower‑frequency words, or lexicographically larger words in case of ties, are removed first.
+Since the heap returns elements in ascending priority order, the result list is reversed at the end.
+Time complexity is O(n log k), and space complexity is O(n + k).
+One edge case is when k exceeds the number of unique words.”
