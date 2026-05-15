@@ -1,0 +1,79 @@
+import java.util.*;
+import java.util.stream.*;
+
+public class TokenTop3 {
+  public static List<String> top3(List<String> lines) {
+    Map<String, Integer> freq = new HashMap<>();
+
+    for (String line : lines) {
+      for (String token : line.split("\\W+")) {
+        if (token.isEmpty()) continue;
+        String key = token.toLowerCase(Locale.ROOT);
+        freq.put(key, freq.getOrDefault(key, 0) + 1);
+      }
+    }
+
+    List<Map.Entry<String, Integer>> list = new ArrayList<>(freq.entrySet());
+    list.sort((a, b) -> b.getValue() - a.getValue());
+
+    return list.stream()
+        .limit(3)
+        .map(e -> e.getKey() + ":" + e.getValue())
+        .collect(Collectors.toList());
+  }
+
+  public static void main(String[] args) {
+    List<String> lines = Arrays.asList(
+        "Hello, hello world!",
+        "world of HELLO",
+        "a-b a_b"
+    );
+    System.out.println(top3(lines));
+  }
+}
+
+
+Questions (answer in order)
+1) What does top3 compute, precisely? (Be specific about tokenization rules.)
+Tokenization is by regex \\W+ (one-or-more non-word chars). In Java “word” is [A-Za-z0-9_], so underscores and digits are kept inside tokens (e.g., a_b stays one token).
+Lowercasing uses Locale.ROOT (good: avoids Turkish-i type issues).
+
+2)What does main print? If the exact output isn’t deterministic, explain what set of outputs are possible and why.
+Tokens per line:
+"Hello, hello world!" → hello, hello, world
+"world of HELLO" → world, of, hello
+"a-b a_b" → a, b, a_b
+Frequencies:
+hello = 3
+world = 2
+of = 1, a = 1, b = 1, a_b = 1
+So the first two outputs are deterministic: hello:3, world:2.
+The 3rd element is NOT deterministic because:
+Ties are only sorted by value (b.getValue() - a.getValue()), so all =1 entries compare as 0.
+The initial iteration order comes from HashMap.entrySet() which is unspecified, so the “first” among ties can vary.
+Therefore, main prints one of:
+[hello:3, world:2, of:1]
+[hello:3, world:2, a:1]
+[hello:3, world:2, b:1]
+[hello:3, world:2, a_b:1]
+
+3)What are the time and space complexities in terms of:
+N = total characters across all strings
+U = number of unique tokens
+Time: building tokens + map is O(N) expected (amortized O(1) hash updates), plus sorting O(U log U), 
+so total O(N + U log U).
+Space: map + list store U entries → O(U) (plus temporary arrays from split, but asymptotically still dominated by U 
+or N depending how you count transient allocations).
+
+4)Identify two potential issues/bugs (correctness, determinism, performance, or API usage).
+lines.size() < 3 is not a bug: .limit(3) will just return fewer elements.
+freq is never null, and if it has <3 entries that’s also fine (returns fewer).
+Two better issues to cite:
+Nondeterministic output for ties (explained above).
+Comparator b.getValue() - a.getValue() can overflow in general; safer is Integer.compare(b.getValue(), a.getValue()). 
+(Also performance note: split("\\W+") compiles a regex each call; could precompile a Pattern.)
+
+5)Suggest one improvement that keeps behavior the same but makes it more robust for production.
+Don’t return null for “<3 results”; return the available results (empty list if none). 
+Returning null is usually a worse API.
+Make tie-breaking deterministic, e.g. sort by frequency desc, then token asc.
