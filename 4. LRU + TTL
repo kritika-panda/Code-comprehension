@@ -1,0 +1,69 @@
+You have an LRU cache, but now each entry expires after ttlMs from write time.
+
+Requirements
+get(k) returns -1 if missing or expired
+put(k,v) inserts/overwrites and updates write time
+Eviction policy when over capacity: LRU among unexpired entries
+Expired entries should not “block” capacity forever
+Questions
+1)What extra data must each entry store?
+For key k:
+i)value
+ii)expiresAt (epoch millis: writeTime + ttlMs)
+iii)pointers for LRU doubly-linked list (prev/next)
+iv)(optionally) a version/counter to handle stale heap records cleanly
+
+2)What data structures would you use to support:
+O(1) average get, eviction of LRU, efficient cleanup of expired items?
+i)HashMap<K, Node> map
+O(1) average lookup by key
+ii)Doubly linked list for LRU (head = most recent, tail = least recent)
+O(1) move-to-front on successful get
+O(1) remove tail on capacity eviction
+iii)Min-heap / PriorityQueue of expirations: (expiresAt, key, version)
+Lets you efficiently find “what expires next”
+On every get/put, run a cleanup loop:
+while heap top is expired, remove it from map+LRU if it’s still the current version
+Why the version? Because if you put(k, newValue) you push a new (expiresAt, k) record; the old one remains in the heap. Versioning lets you ignore stale heap entries.
+
+3)What is the time complexity of get and put in your design? (average + any extra factors)
+Helper: evictExpired(now)
+While heap not empty and heap.peek().expiresAt <= now:
+pop record (t, k, ver)
+if map doesn’t contain k, continue
+if map.get(k).version != ver, continue (stale record)
+else remove node from LRU + remove from map
+This loop is “pay as you go”: each heap record is popped once overall.
+get(k):
+evictExpired(now)
+lookup node in map
+if missing → -1
+if node.expiresAt <= now → remove node + return -1 (extra safety)
+move node to LRU head
+return value
+
+Time: average O(1) map + O(1) list + cleanup cost
+Cleanup contributes O(log U) per expired record popped, but amortized over many ops it’s typically described as:
+Amortized: O(1) for LRU + map, plus O(log U) occasionally due to expiration pops
+More explicitly: O(1 + E log U) where E is number of entries expired during that call (often 0).
+put(k,v):
+evictExpired(now)
+if key exists: update value, update expiresAt, bump version, move to head else: create node, add to map, add to head
+push (expiresAt, k, version) into heap
+if map.size() > cap:
+evict from LRU tail (least recently used among unexpired because we already cleaned expired)
+also remove from map (heap will have a stale record later; version check handles it)
+Time: average O(1) + one heap push O(log U) + possible tail eviction O(1)
+So: O(log U) per put (dominated by heap).
+
+Space:
+map O(U)
+LRU nodes O(U)
+heap O(U) (can be >U if many overwrites; versioning prevents correctness issues; you can also periodically rebuild heap if needed)
+
+4)Subtle case: if an entry is expired, should a get(k) update LRU order or not? Explain tradeoff and pick one.
+No. If it’s expired, treat it as missing:
+Return -1
+Remove it
+Do not move it in LRU (it shouldn’t become “recent”)
+Tradeoff: If you did move on expired access, you’d keep dead entries “hot” and harm eviction quality + memory.
