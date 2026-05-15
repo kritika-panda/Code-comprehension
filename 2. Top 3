@@ -77,3 +77,16 @@ Comparator b.getValue() - a.getValue() can overflow in general; safer is Integer
 Don’t return null for “<3 results”; return the available results (empty list if none). 
 Returning null is usually a worse API.
 Make tie-breaking deterministic, e.g. sort by frequency desc, then token asc.
+
+6) How would you change the sort line to (a) avoid overflow and 
+(b) make ties deterministic by alphabetical token order? Please write just that comparator.
+list.sort((a, b) -> {
+  int c = Integer.compare(b.getValue(), a.getValue()); // desc
+  if (c != 0) return c;
+  return a.getKey().compareTo(b.getKey());             // asc tie-break
+});
+OR
+list.sort(
+    Comparator.<Map.Entry<String,Integer>>comparingInt(e -> e.getValue()).reversed()
+        .thenComparing(Map.Entry::getKey)
+);
