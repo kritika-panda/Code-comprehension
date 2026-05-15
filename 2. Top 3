@@ -88,7 +88,42 @@ Make tie-breaking deterministic, e.g. sort by frequency desc, then token asc.
 
 6) How would you change the sort line to (a) avoid overflow and 
 (b) make ties deterministic by alphabetical token order? Please write just that comparator.
-list.sort((a, b) -> {
+(a) To avoid overflow, don’t subtract the integers. Use Integer.compare (or a comparator helper) instead.
+Replace:
+list.sort((a, b) -> b.getValue() - a.getValue());
+with:
+list.sort((a, b) -> Integer.compare(b.getValue(), a.getValue())); // descending
+In Java, int arithmetic is fixed-width 32-bit signed (range: −2,147,483,648 to 2,147,483,647). When an operation produces a value outside that range, Java does not throw an error—it wraps around using two’s-complement modulo 2 
+32. That wrap-around is what we call overflow (or underflow).
+Why subtraction can overflow
+The comparator:
+(b.getValue() - a.getValue()) assumes:
+result > 0 ⇒ b should come before a
+result < 0 ⇒ a should come before b
+result = 0 ⇒ tie
+But if the subtraction overflows, the sign of the result can become wrong, breaking ordering.
+Example (classic overflow case)
+Let:
+b.getValue() = Integer.MIN_VALUE = -2_147_483_648
+a.getValue() = 10
+Compute:
+[ b - a = -2{,}147{,}483{,}648 - 10 = -2{,}147{,}483{,}658 ]
+That is less than Integer.MIN_VALUE, so it can’t be represented as an int. Java wraps it around:
+[ -2{,}147{,}483{,}658 ;; \text{mod } 2^{32} = 2{,}147{,}483{,}638 ]
+So the expression returns a positive number, even though mathematically it should be negative. Your comparator would incorrectly conclude b > a.
+Another example (opposite direction)
+b = Integer.MAX_VALUE = 2_147_483_647
+a = -1
+[ b - a = 2{,}147{,}483{,}647 - (-1) = 2{,}147{,}483{,}648 ]
+That’s greater than Integer.MAX_VALUE, so it wraps to Integer.MIN_VALUE (negative!), flipping the sign again.
+Why Integer.compare is safe
+Integer.compare(x, y) does not subtract. It uses comparisons:
+if x < y return -1
+else if x > y return 1
+else return 0
+Since it never computes x - y, there’s no risk of producing an out-of-range intermediate value, so no overflow.
+
+(b)list.sort((a, b) -> {
   int c = Integer.compare(b.getValue(), a.getValue()); // desc
   if (c != 0) return c;
   return a.getKey().compareTo(b.getKey());             // asc tie-break
@@ -113,3 +148,6 @@ Heap maintenance over U unique tokens: O(U log k) = O(U) since k=3
 Total: O(N + U log 3) ≈ O(N + U)
 Space: O(U) for the map + O(k) for heap.
 (Alternative: quickselect/partial selection, but heap is simplest and very common in interviews.)
+
+
+
