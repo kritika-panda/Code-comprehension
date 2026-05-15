@@ -60,7 +60,15 @@ Therefore, main prints one of:
 3)What are the time and space complexities in terms of:
 N = total characters across all strings
 U = number of unique tokens
-Time: building tokens + map is O(N) expected (amortized O(1) hash updates), plus sorting O(U log U), 
+Time: 
+Combine parts:
+Build map: O(N) expected
+Copy entries: O(U)
+Sort: O(U log U)
+Stream top 3: O(1)
+So total: O(N + U + U log U) = O(N + U log U)
+(We drop + U because it’s dominated by U log U for large U.)
+building tokens + map is O(N) expected (amortized O(1) hash updates), plus sorting O(U log U), 
 so total O(N + U log U).
 Space: map + list store U entries → O(U) (plus temporary arrays from split, but asymptotically still dominated by U 
 or N depending how you count transient allocations).
