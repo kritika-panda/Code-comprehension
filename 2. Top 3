@@ -90,3 +90,18 @@ list.sort(
     Comparator.<Map.Entry<String,Integer>>comparingInt(e -> e.getValue()).reversed()
         .thenComparing(Map.Entry::getKey)
 );
+
+7) if you wanted top 3 without sorting all U entries, what data structure / approach would you use and what would the complexity become?
+Maintain the best 3 entries seen so far in a min-heap ordered by:
+frequency ascending (so the “worst” of the top-3 is at the root)
+tie-break deterministically (e.g., reverse key order in the heap so popping removes the least desired one)
+For each (token, count):
+push into heap
+if heap size > 3, pop one
+At the end, heap has top 3; pop to list and reverse/sort for final output order.
+Complexity
+Building frequency map: O(N)
+Heap maintenance over U unique tokens: O(U log k) = O(U) since k=3
+Total: O(N + U log 3) ≈ O(N + U)
+Space: O(U) for the map + O(k) for heap.
+(Alternative: quickselect/partial selection, but heap is simplest and very common in interviews.)
